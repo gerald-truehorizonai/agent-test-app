@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Items — agent-test-app</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f0f2f5; color: #1a1a1a; min-height: 100vh; }
+
+    header {
+      background: #1d4ed8;
+      color: white;
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.2);
+    }
+    header h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.01em; }
+    header .subtitle { font-size: 0.8rem; opacity: 0.7; margin-top: 2px; }
+
+    .container { max-width: 680px; margin: 2rem auto; padding: 0 1rem; }
+
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 1.5rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+      margin-bottom: 1.25rem;
+    }
+    .card-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: #6b7280;
+      margin-bottom: 1rem;
+    }
+
+    /* Create form */
+    .field { margin-bottom: 0.6rem; }
+    .field label { display: block; font-size: 0.8rem; color: #374151; margin-bottom: 0.3rem; font-weight: 500; }
+    input[type=text] {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      transition: border-color 0.15s;
+    }
+    input[type=text]:focus { outline: none; border-color: #1d4ed8; box-shadow: 0 0 0 3px rgba(29,78,216,.1); }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      padding: 0.45rem 0.9rem; border: none; border-radius: 6px;
+      font-size: 0.85rem; font-weight: 500; cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-blue   { background: #1d4ed8; color: white; }
+    .btn-blue:hover:not(:disabled)   { background: #1e40af; }
+    .btn-green  { background: #16a34a; color: white; }
+    .btn-green:hover:not(:disabled)  { background: #15803d; }
+    .btn-red    { background: #dc2626; color: white; }
+    .btn-red:hover:not(:disabled)    { background: #b91c1c; }
+    .btn-ghost  { background: #f3f4f6; color: #374151; }
+    .btn-ghost:hover:not(:disabled)  { background: #e5e7eb; }
+
+    .form-footer { display: flex; justify-content: flex-end; margin-top: 0.75rem; }
+
+    /* Toast */
+    #toast {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      padding: 0.65rem 1.1rem; border-radius: 8px;
+      font-size: 0.875rem; font-weight: 500;
+      box-shadow: 0 4px 12px rgba(0,0,0,.15);
+      opacity: 0; transform: translateY(6px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none; z-index: 999;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+    #toast.ok  { background: #dcfce7; color: #166534; }
+    #toast.err { background: #fee2e2; color: #991b1b; }
+
+    /* Items section */
+    .section-header {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 0.75rem;
+    }
+    .section-title { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: #6b7280; }
+    #item-count { font-size: 0.8rem; color: #9ca3af; }
+
+    .empty { text-align: center; color: #9ca3af; padding: 2.5rem 1rem; font-size: 0.9rem; }
+
+    /* Item card */
+    .item {
+      background: white;
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 0.65rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .item-id { font-size: 0.7rem; color: #d1d5db; width: 1.25rem; flex-shrink: 0; text-align: right; }
+    .item-body { flex: 1; min-width: 0; }
+
+    /* view mode */
+    .view-mode .item-name { font-weight: 600; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .view-mode .item-desc { font-size: 0.82rem; color: #6b7280; margin-top: 0.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* edit mode — hidden by default */
+    .edit-mode { display: none; flex-direction: column; gap: 0.4rem; }
+    .edit-mode input { padding: 0.35rem 0.6rem; font-size: 0.875rem; }
+    .edit-actions { display: flex; gap: 0.4rem; margin-top: 0.2rem; }
+    .item.editing .view-mode  { display: none; }
+    .item.editing .edit-mode  { display: flex; }
+    .item.editing .item-actions .btn-edit { display: none; }
+
+    .item-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="h1">agent-test-app</div>
+    <div class="subtitle">Express Items API — UI test harness</div>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <div class="card-title">Add item</div>
+    <form id="create-form">
+      <div class="field">
+        <label for="new-name">Name <span style="color:#dc2626">*</span></label>
+        <input type="text" id="new-name" placeholder="e.g. Widget" required autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="new-desc">Description</label>
+        <input type="text" id="new-desc" placeholder="Optional" autocomplete="off">
+      </div>
+      <div class="form-footer">
+        <button type="submit" class="btn btn-blue">Add item</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="section-header">
+    <span class="section-title">Items</span>
+    <span id="item-count"></span>
+  </div>
+
+  <div id="items-list"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  let toastTimer;
+  function toast(msg, type = 'ok') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'show ' + type;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.className = ''; }, 3000);
+  }
+
+  async function api(path, opts = {}) {
+    const res = await fetch('/items' + path, {
+      headers: { 'Content-Type': 'application/json' },
+      ...opts,
+    });
+    if (res.status === 204) return null;
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw Object.assign(new Error(data.error || `HTTP ${res.status}`), { status: res.status });
+    return data;
+  }
+
+  // ── Count ─────────────────────────────────────────────────────────────────
+
+  function updateCount() {
+    const n = document.querySelectorAll('.item').length;
+    document.getElementById('item-count').textContent = n === 0 ? '' : `${n} item${n !== 1 ? 's' : ''}`;
+  }
+
+  // ── Render one item ───────────────────────────────────────────────────────
+
+  function buildItem(data) {
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.dataset.id = data.id;
+
+    div.innerHTML = `
+      <span class="item-id">${escHtml(data.id)}</span>
+      <div class="item-body">
+        <div class="view-mode">
+          <div class="item-name">${escHtml(data.name)}</div>
+          <div class="item-desc">${escHtml(data.description || '')}</div>
+        </div>
+        <div class="edit-mode">
+          <input type="text" class="edit-name" value="${escHtml(data.name)}" placeholder="Name" required>
+          <input type="text" class="edit-desc" value="${escHtml(data.description || '')}" placeholder="Description">
+          <div class="edit-actions">
+            <button type="button" class="btn btn-green btn-save">Save</button>
+            <button type="button" class="btn btn-ghost btn-cancel">Cancel</button>
+          </div>
+        </div>
+      </div>
+      <div class="item-actions">
+        <button type="button" class="btn btn-ghost btn-edit">Edit</button>
+        <button type="button" class="btn btn-red btn-delete">Delete</button>
+      </div>
+    `;
+
+    div.querySelector('.btn-edit').onclick = () => div.classList.add('editing');
+
+    div.querySelector('.btn-cancel').onclick = () => {
+      div.querySelector('.edit-name').value = data.name;
+      div.querySelector('.edit-desc').value = data.description || '';
+      div.classList.remove('editing');
+    };
+
+    div.querySelector('.btn-save').onclick = async () => {
+      const name = div.querySelector('.edit-name').value.trim();
+      const description = div.querySelector('.edit-desc').value.trim();
+      if (!name) { toast('Name is required', 'err'); return; }
+
+      const btn = div.querySelector('.btn-save');
+      btn.disabled = true;
+      try {
+        const updated = await api('/' + data.id, {
+          method: 'PUT',
+          body: JSON.stringify({ name, description }),
+        });
+        data.name = updated.name;
+        data.description = updated.description || '';
+        div.querySelector('.item-name').textContent = data.name;
+        div.querySelector('.item-desc').textContent = data.description;
+        div.querySelector('.edit-name').value = data.name;
+        div.querySelector('.edit-desc').value = data.description;
+        div.classList.remove('editing');
+        toast('Item updated');
+      } catch (e) {
+        if (e.status === 404 || e.status === 405) {
+          toast('PUT /items/:id is not implemented yet — complete the agent task first', 'err');
+        } else {
+          toast('Update failed: ' + e.message, 'err');
+        }
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    div.querySelector('.btn-delete').onclick = async () => {
+      const btn = div.querySelector('.btn-delete');
+      btn.disabled = true;
+      try {
+        await api('/' + data.id, { method: 'DELETE' });
+        div.remove();
+        updateCount();
+        toast('Item deleted');
+      } catch (e) {
+        btn.disabled = false;
+        toast('Delete failed: ' + e.message, 'err');
+      }
+    };
+
+    return div;
+  }
+
+  // ── Load all items ────────────────────────────────────────────────────────
+
+  async function loadItems() {
+    try {
+      const items = await api('/');
+      const list = document.getElementById('items-list');
+      list.innerHTML = '';
+      if (items.length === 0) {
+        list.innerHTML = '<div class="empty">No items yet — add one above</div>';
+      } else {
+        items.forEach(item => list.appendChild(buildItem(item)));
+      }
+      updateCount();
+    } catch (e) {
+      document.getElementById('items-list').innerHTML =
+        `<div class="empty">Failed to load items: ${escHtml(e.message)}</div>`;
+    }
+  }
+
+  // ── Create form ───────────────────────────────────────────────────────────
+
+  document.getElementById('create-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const nameEl = document.getElementById('new-name');
+    const descEl = document.getElementById('new-desc');
+    const btn = e.submitter;
+    btn.disabled = true;
+
+    try {
+      const item = await api('/', {
+        method: 'POST',
+        body: JSON.stringify({ name: nameEl.value.trim(), description: descEl.value.trim() }),
+      });
+      nameEl.value = '';
+      descEl.value = '';
+      nameEl.focus();
+      const list = document.getElementById('items-list');
+      const empty = list.querySelector('.empty');
+      if (empty) empty.remove();
+      list.appendChild(buildItem(item));
+      updateCount();
+      toast('Item created');
+    } catch (e) {
+      toast('Create failed: ' + e.message, 'err');
+    } finally {
+      btn.disabled = false;
+    }
+  };
+
+  loadItems();
+</script>
+</body>
+</html>
