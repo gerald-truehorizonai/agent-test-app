@@ -32,6 +32,23 @@ router.delete('/:id', (req, res) => {
   res.status(204).send();
 });
 
-// TODO: PUT /:id is missing — update an existing item's name and/or description
+router.put('/:id', (req, res) => {
+  const { name, description } = req.body;
+  const existing = store.getById(req.params.id);
+  if (!existing) {
+    return res.status(404).json({ error: 'item not found' });
+  }
+
+  if (name !== undefined && name === '') {
+    return res.status(400).json({ error: 'name cannot be empty' });
+  }
+
+  const updated = store.update(req.params.id, {
+    ...(name !== undefined ? { name } : {}),
+    ...(description !== undefined ? { description } : {}),
+  });
+
+  res.json(updated);
+});
 
 module.exports = router;
