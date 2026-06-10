@@ -57,6 +57,43 @@ describe('GET /items/:id', () => {
   });
 });
 
+describe('PUT /items/:id', () => {
+  it('updates the item name and returns 200', async () => {
+    const item = store.create({ name: 'Widget', description: 'A small widget' });
+    const res = await request(app).put(`/items/${item.id}`).send({ name: 'Updated Widget' });
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      id: item.id,
+      name: 'Updated Widget',
+      description: 'A small widget',
+    });
+  });
+
+  it('updates the item description and returns 200', async () => {
+    const item = store.create({ name: 'Widget', description: 'A small widget' });
+    const res = await request(app)
+      .put(`/items/${item.id}`)
+      .send({ description: 'An updated widget' });
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      id: item.id,
+      name: 'Widget',
+      description: 'An updated widget',
+    });
+  });
+
+  it('returns 404 for a non-existent id', async () => {
+    const res = await request(app).put('/items/999').send({ name: 'Missing' });
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 400 when no update fields are provided', async () => {
+    const item = store.create({ name: 'Widget', description: 'A small widget' });
+    const res = await request(app).put(`/items/${item.id}`).send({});
+    expect(res.status).toBe(400);
+  });
+});
+
 describe('DELETE /items/:id', () => {
   it('deletes the item and returns 204', async () => {
     const item = store.create({ name: 'Widget', description: 'A small widget' });
